@@ -1,5 +1,9 @@
 # ARIMA rainfall experiment
 
+For a pedagogical explanation of the model, its inputs, outputs, and the
+canoeing-window calculation, see [TECHNICAL_REPORT.md](TECHNICAL_REPORT.md).
+For the model equations, see [ARIMA_MATH.md](ARIMA_MATH.md).
+
 This prototype fits an ARIMA(1,1,1) model to recent rainfall at one location,
 then predicts the accumulated rainfall during a requested window. For the
 canoeing trip on 3 November 2026, 14:30–16:30 Utrecht time (CET) is
@@ -36,9 +40,42 @@ account for the product's timestamps and units. Do not mix station observations
 with radar in one series. KNMI terms apply to its data.
 
 The loader expects this normalized CSV, not the raw KNMI API or the hourly
-KNMI CSV in this repository. No downloader or raw radar-to-CSV conversion is
-included. If the team has another regular resolution, use `--interval-minutes`
-and ensure both window boundaries align with that resolution.
+KNMI CSV in this repository. If the team has another regular resolution, use
+`--interval-minutes` and ensure both window boundaries align with that
+resolution.
+
+## Fetch five-minute KNMI radar data
+
+The radar helper downloads the most recent 72 five-minute RTCOR observations
+(six hours), extracts one pixel around Utrecht centre (52.0907 N, 5.1214 E)
+and writes the normalized CSV used by the forecast. This approximate location
+is not necessarily on the canoe route; use `--lat` and `--lon` to select the
+actual location. Keep the selected location consistent between runs.
+
+Place your Open Data API key in `.config/knmi-api-key` (ignored by Git), or
+set the `KNMI_API_KEY` environment variable. Never commit or share the key.
+After installing dependencies, run:
+
+```bash
+python -m arima.radar --output data/radar_utrecht_5min.csv
+python -m arima --input data/radar_utrecht_5min.csv \
+  --start 2026-11-03T14:30:00+01:00 \
+  --end 2026-11-03T16:30:00+01:00
+```
+
+The helper rejects missing files, missing pixels and unsupported radar
+metadata rather than filling gaps with zero, and it will not overwrite an
+existing CSV. Use a new output name for another download. The live radar
+dataset has limited recent coverage; `--as-of` can select an earlier cutoff
+only while those files remain available. `--count` sets the number of
+observations (48-400); each radar file requires two API requests, so respect
+KNMI's request quotas. For older data see KNMI's
+[radar archive](https://dataplatform.knmi.nl/dataset/nl-rdr-data-rtcor-5m-tar-1-0),
+which this helper does not download.
+
+Source: [KNMI RTCOR-5m](https://dataplatform.knmi.nl/dataset/nl-rdr-data-rtcor-5m-1-0),
+radar estimates corrected using rain gauges, not direct observations at a
+station. Check the dataset's terms before redistributing data.
 
 ## Run
 
